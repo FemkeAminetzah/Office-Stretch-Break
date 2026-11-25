@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" style="color-scheme: light dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stretch Break</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d2320;--mute:#5f6b65;--line:#e1e0d8;--accent:#1f7a5c;--accent-ink:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a17;--card:#1d2521;--ink:#eef2ef;--mute:#9aa8a0;--line:#2c3631;--accent:#4cc79b;--accent-ink:#0c1a14}}
+:root[data-theme="dark"]{--bg:#141a17;--card:#1d2521;--ink:#eef2ef;--mute:#9aa8a0;--line:#2c3631;--accent:#4cc79b;--accent-ink:#0c1a14}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:520px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 4px}
+p.sub{color:var(--mute);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.status{font-size:1.1rem;font-weight:600}
+.note{color:var(--mute);font-size:.9rem;margin-top:6px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label{font-size:.9rem;color:var(--mute)}
+select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+button{font:inherit;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 16px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+#reminder{display:none;border-color:var(--accent);border-width:2px}
+#reminder h2{margin:0 0 6px;font-size:1.25rem}
+#reminder p{margin:0 0 14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Stretch Break</h1>
+  <p class="sub">An hourly nudge to get up and move. Keep this tab open.</p>
+
+  <div class="card" id="reminder" role="alert">
+    <h2 id="rName"></h2>
+    <p id="rText"></p>
+    <div class="row">
+      <button class="primary" id="done">Done</button>
+      <button id="snooze">Snooze 10 min</button>
+      <button id="skip">Skip</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="status" id="status">Reminders are off</div>
+    <div class="note" id="perm"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" id="toggle">Turn on reminders</button>
+      <button id="test">Send a test</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label>From <select id="start"></select></label>
+      <label>to <select id="end"></select></label>
+      <label>every <select id="every"><option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option></select></label>
+    </div>
+    <div class="note">Monday to Friday, in your computer’s local time. If a stretch hurts, skip it and check with a physiotherapist.</div>
+  </div>
+</main>
+
+<script>
+const STRETCHES=[
+["Neck tilt","Drop your right ear toward your right shoulder. Hold 20 seconds, then switch sides."],
+["Shoulder rolls","Roll both shoulders backward in big circles, 10 times. Then forward, 10 times."],
+["Seated spinal twist","Sit tall, place your right hand on your left knee and twist gently. Hold 20 seconds per side."],
+["Wrist and forearm stretch","Extend one arm, palm up, and gently pull your fingers back with the other hand. 20 seconds per side."],
+["Chest opener","Clasp your hands behind your back, straighten your arms and lift slightly. Hold 30 seconds."],
+["Standing hamstring stretch","Place one heel forward, hinge at the hips with a flat back. Hold 20 seconds per leg."],
+["Hip flexor stretch","Step into a shallow lunge, tuck your pelvis and hold 30 seconds per side."],
+["Calf raises","Stand up and rise onto your toes, then lower slowly. 15 repetitions."]
+];
+const $=id=>document.getElementById(id);
+let cfg={on:false,start:10,end:17,every:1};
+try{const s=localStorage.getItem('stretch-cfg');if(s)cfg={...cfg,...JSON.parse(s)};}catch(e){}
+const save=()=>{try{localStorage.setItem('stretch-cfg',JSON.stringify(cfg));}catch(e){}};
+let lastKey='',snoozeUntil=0,flash=null;
+
+const isSlot=d=>{const w=d.getDay(),h=d.getHours();return w>=1&&w<=5&&h>=cfg.start&&h<=cfg.end&&(h-cfg.start)%cfg.every===0;};
+const keyOf=d=>d.toDateString()+d.getHours();
+const pick=d=>STRETCHES[Math.floor(d.getTime()/3600000)%STRETCHES.length];
+function nextSlot(){const d=new Date();d.setMinutes(0,0,0);for(let i=0;i<200;i++){d.setHours(d.getHours()+1);if(isSlot(d))return new Date(d);}return null;}
+const hm=d=>d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+
+function notify(t,b){try{if('Notification' in window&&Notification.permission==='granted')new Notification(t,{body:b});}catch(e){}}
+function fire(now){
+  const [n,t]=pick(now);
+  $('rName').textContent='Time to stretch: '+n;
+  $('rText').textContent=t;
+  $('reminder').style.display='block';
+  notify('Time to stretch: '+n,t);
+  clearInterval(flash);let on=false;
+  flash=setInterval(()=>{document.title=(on=!on)?'⏰ Stretch time!':'Stretch Break';},1000);
+}
+function dismiss(){$('reminder').style.display='none';clearInterval(flash);document.title='Stretch Break';}
+
+function render(now){
+  let s='Reminders are off';
+  if(cfg.on){
+    if(snoozeUntil)s='Snoozed until '+hm(new Date(snoozeUntil));
+    else{const n=nextSlot();
+      if(!n)s='No upcoming reminders';
+      else{const m=Math.round((n-now)/60000);
+        s='Next stretch at '+hm(n)+(n.toDateString()===now.toDateString()?' (in '+m+' min)':' on '+n.toLocaleDateString([], {weekday:'long'}));}}
+  }
+  $('status').textContent=s;
+  $('toggle').textContent=cfg.on?'Turn off reminders':'Turn on reminders';
+  let p='';
+  try{p='Notification' in window?(Notification.permission==='granted'?'Desktop notifications are allowed.':Notification.permission==='denied'?'Desktop notifications are blocked in your browser settings. You will still see reminders on this page.':'Turn on reminders to allow desktop notifications.'):'This browser does not support desktop notifications.';}catch(e){}
+  $('perm').textContent=p;
+}
+function tick(){
+  const now=new Date();
+  if(cfg.on){
+    if(snoozeUntil&&now.getTime()>=snoozeUntil){snoozeUntil=0;fire(now);}
+    else if(!snoozeUntil&&isSlot(now)&&now.getMinutes()<5&&lastKey!==keyOf(now)){lastKey=keyOf(now);fire(now);}
+  }
+  render(now);
+}
+
+for(let h=5;h<=22;h++){const o=(sel)=>{const e=document.createElement('option');e.value=h;e.textContent=String(h).padStart(2,'0')+':00';return e;};$('start').appendChild(o());$('end').appendChild(o());}
+$('start').value=cfg.start;$('end').value=cfg.end;$('every').value=cfg.every;
+['start','end','every'].forEach(k=>$(k).addEventListener('change',e=>{cfg[k]=+e.target.value;save();tick();}));
+
+$('toggle').addEventListener('click',async()=>{
+  cfg.on=!cfg.on;save();
+  if(cfg.on){lastKey=keyOf(new Date());snoozeUntil=0;
+    try{if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();}catch(e){}}
+  else dismiss();
+  tick();
+});
+$('test').addEventListener('click',()=>fire(new Date()));
+$('done').addEventListener('click',dismiss);
+$('skip').addEventListener('click',dismiss);
+$('snooze').addEventListener('click',()=>{snoozeUntil=Date.now()+600000;dismiss();tick();});
+
+setInterval(tick,1000);tick();
+</script>
+</body>
+</html>
