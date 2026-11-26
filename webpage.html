@@ -110,7 +110,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 
   <div class="card panel" id="p-water" role="tabpanel">
     <div class="demo" id="v-water"></div>
-    <label><input type="checkbox" id="water"> Water break every hour (at :30)</label>
+    <label><input type="checkbox" id="water"> Water break every hour </label>
     <div class="note">Runs between the start and end times set in the Stretch tab, Monday to Friday.</div>
     <div class="row" style="margin-top:12px"><button id="t-water">Send a test</button></div>
   </div>
@@ -137,7 +137,7 @@ const STRETCHES=[
 {n:"Side lunge",slug:"side-lunge",t:"Step wide, bend one knee and keep the other leg straight. Hold 20 seconds per side. Skip it if your knees hurt.",A:P({}),B:P({l:-12,c1:-32,c2:-32,d1:40,d2:0,a1:-15,b1:15})}
 ];
 STRETCHES.forEach(s=>s.kind='stretch');
-const WATER={kind:'water',n:'Water break',slug:'water-break',t:'Time for a glass of water. Take a few minutes away from your screen.'};
+const WATER={kind:'water',n:'Water break',slug:'water-break',t:'Time for a glass of water.'};
 const COFFEE={kind:'coffee',n:'Coffee break',slug:'coffee-break',t:'Grab a coffee or tea and step away from your desk for a few minutes.'};
 const ALL=[...STRETCHES,WATER,COFFEE];
 const COFFEE_HOURS=[11,15];
